@@ -2,11 +2,12 @@ import socket  # noqa: F401
 import threading  # noqa: F401
 
 BUF_SIZE = 4096  # Buffer size for receiving data
-def handle_command(client: socket.socket):
-    while chunk:=client.recv(BUF_SIZE):
-        if chunk==b"":
-            break
-        client.sendall(b"+PONG\r\n")
+def handle_command(
+    args: list, database: DatabaseHandler, expirations_manager: ExpirationManager
+) -> str:
+    if len(args) != 1 or len(args[0]) == 0:  # Error if no argument is provided
+        return "-ERR wrong number of arguments for command\r\n"
+    return f"${len(args[0])}\r\n{args[0]}\r\n"
 
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
