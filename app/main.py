@@ -1,6 +1,6 @@
 import socket  # noqa: F401
 import threading
-
+import time
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
     print("Logs from your program will appear here!")
@@ -32,6 +32,7 @@ def main():
         except Exception:
             return None
     store={}
+    expiry={}
     def handle_client(connection):
         buffer = b""
         while True:
@@ -53,10 +54,29 @@ def main():
                         connection.sendall(resp)
                     elif command == "set" and len(cmd) > 2:
                         key, value = cmd[1], cmd[2]
+                        px = None
+                        i=3
+                        while i+1<len(cmd):
+                            if cmd[i].lower()=="px":
+                                try:
+                                    px = int(cmd[i+1])
+                                except Exception:
+                                    pass
+                                break
+                            i += 2
                         store[key] = value
+                        if px is not None:
+                            expiry[key] = time.time() + px / 1000.0
+                        elif key in expiry:
+                            del expiry[key]
                         connection.sendall(b"+OK\r\n")
                     elif command == "get" and len(cmd) > 1:
                         key = cmd[1]
+                        now = time.time()
+                        if key in expiry and now>=expiry[key]:
+                            if key in store:
+                                del store[key]
+                            del expiry[key]
                         if key in store:
                             value = store[key]
                             resp = f"${len(value)}\r\n{value}\r\n".encode("utf-8")
