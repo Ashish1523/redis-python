@@ -1,5 +1,5 @@
 import socket  # noqa: F401
-
+import threading
 
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -7,7 +7,7 @@ def main():
 
     # Uncomment this to pass the first stage
     #
-    import threading
+    
 
     server_socket = socket.create_server(("localhost", 6379), reuse_port=True)
 
@@ -31,7 +31,7 @@ def main():
             return argv
         except Exception:
             return None
-
+    store={}
     def handle_client(connection):
         buffer = b""
         while True:
@@ -43,13 +43,26 @@ def main():
                 # Try to parse a command from the buffer
                 cmd = parse_redis_command(buffer)
                 if cmd:
-                    if len(cmd) > 0 and cmd[0].lower() == "ping":
+                    command= cmd[0].lower()
+                    if command== "ping":
                         connection.sendall(b"+PONG\r\n")
-                    elif len(cmd) > 1 and cmd[0].lower() == "echo":
+                    elif command == "echo":
                         # RESP bulk string reply: $<len>\r\n<str>\r\n
                         arg = cmd[1]
                         resp = f"${len(arg)}\r\n{arg}\r\n".encode("utf-8")
                         connection.sendall(resp)
+                    elif command == "set" and len(cmd) > 2:
+                        key, value = cmd[1], cmd[2]
+                        store[key] = value
+                        connection.sendall(b"+OK\r\n")
+                    elif command == "get" and len(cmd) > 1:
+                        key = cmd[1]
+                        if key in store:
+                            value = store[key]
+                            resp = f"${len(value)}\r\n{value}\r\n".encode("utf-8")
+                            connection.sendall(resp)
+                        else:
+                            connection.sendall(b"$-1\r\n")
                     buffer = b""  # Clear buffer after handling one command
             except Exception:
                 break
